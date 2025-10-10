@@ -1,0 +1,372 @@
+name: 'AI Security Posture Management Scanner'
+description: 'Run comprehensive LLM endpoint pentesting and model scanning with automated vulnerability detection and GitHub issue creation'
+author: 'AllTrue Inc. (https://alltrue.ai)'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  # Authentication
+  alltrue-api-key:
+    description: 'AllTrue API key for authentication'
+    required: true
+  alltrue-api-url:
+    description: 'AllTrue API URL endpoint'
+    required: true
+  alltrue-customer-id:
+    description: 'AllTrue customer ID'
+    required: true
+  alltrue-organization-id:
+    description: 'AllTrue organization ID'
+    required: false
+    default: ''
+  
+  python-version:
+    description: 'Python version to use'
+    required: false
+    default: '3.11'
+  
+  # ---------- Execution toggles ----------
+  enable-llm-pentest:
+    description: 'Enable LLM endpoint pentesting'
+    required: false
+    default: 'true'
+  enable-model-scanning:
+    description: 'Enable model scanning'
+    required: false
+    default: 'false'
+  
+  # ---------- Inventory scope ----------
+  inventory-scope:
+    description: 'Inventory scope: organization|project|resource'
+    required: false
+    default: 'organization'
+  project-ids:
+    description: 'Comma-separated project IDs (for project scope)'
+    required: false
+    default: ''
+  target-resource-ids:
+    description: 'Comma-separated resource IDs (for resource scope)'
+    required: false
+    default: ''
+  target-resource-names:
+    description: 'Comma-separated resource names (for resource scope)'
+    required: false
+    default: ''
+  
+  # ---------- LLM Pentest parameters ----------
+  pentest-template:
+    description: 'Pentest template name to use'
+    required: false
+    default: 'CI/CD Pentest All Categories'
+  
+  # ---------- Model scanning parameters ----------
+  model-scan-policies:
+    description: 'Comma-separated model scan policies (empty = all)'
+    required: false
+    default: ''
+  model-scan-description:
+    description: 'Description for model scans'
+    required: false
+    default: 'CI Model Scan'
+  
+  # ---------- Failure thresholds ----------
+  fail-outcome-at-or-above:
+    description: 'Fail on outcomes at/above this level: critical|poor|moderate|good'
+    required: false
+    default: 'moderate'
+  on-threshold-action:
+    description: 'Action on threshold breach: fail|issue|both|none'
+    required: false
+    default: 'fail'
+  on-hard-failures-action:
+    description: 'Action on hard failures: fail|issue|both|ignore'
+    required: false
+    default: 'ignore'
+  
+  # ---------- GitHub Issues integration ----------
+  github-token:
+    description: 'GitHub token for creating issues (uses GITHUB_TOKEN by default)'
+    required: false
+    default: ''
+  github-repository:
+    description: 'Target GitHub repository for issues (owner/repo)'
+    required: false
+    default: ''
+  github-default-labels:
+    description: 'Comma-separated default labels for GitHub issues'
+    required: false
+    default: ''
+  github-assignees:
+    description: 'Comma-separated GitHub usernames to assign issues'
+    required: false
+    default: ''
+  category-issue-min-severity:
+    description: 'Minimum severity for per-category issues: CRITICAL|HIGH|MEDIUM|LOW|INFORMATIONAL'
+    required: false
+    default: 'INFORMATIONAL'
+  
+  # ---------- Concurrency & polling ----------
+  max-concurrent-pentests:
+    description: 'Maximum number of pentests/scans to run in parallel'
+    required: false
+    default: '8'
+  start-stagger-secs:
+    description: 'Seconds to stagger between start requests'
+    required: false
+    default: '0'
+  max-start-retries:
+    description: 'Retries when starting a pentest fails (retryable)'
+    required: false
+    default: '3'
+  start-retry-delay:
+    description: 'Seconds to wait between start retries'
+    required: false
+    default: '30'
+  poll-timeout-secs:
+    description: 'Timeout in seconds for polling operations'
+    required: false
+    default: '3600'
+  poll-timeout-action:
+    description: 'What to do on poll timeout: fail|continue|partial'
+    required: false
+    default: 'fail'
+  graphql-extended-timeout-secs:
+    description: 'Extra seconds for extended GraphQL polling after RUNNING timeouts'
+    required: false
+    default: '1800'
+  graphql-poll-interval-secs:
+    description: 'Interval (secs) between extended GraphQL polls'
+    required: false
+    default: '120'
+  
+  # ---------- Misc ----------
+  artifact-retention-days:
+    description: 'Days to retain artifacts'
+    required: false
+    default: '30'
+  source-ref:
+    description: 'Ref of musical-dollop to checkout (e.g., main)'
+    required: false
+    default: 'main'
+
+outputs:
+  pentest-status:
+    description: 'Status of the security scan (success|failure|neutral)'
+    value: ${{ steps.decide.outputs.status }}
+  worst-outcome:
+    description: 'Worst outcome from all scans (Critical|Poor|Moderate|Good|Excellent|Unknown)'
+    value: ${{ steps.extract-outcome.outputs.outcome }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout musical-dollop
+      uses: actions/checkout@v4
+      with:
+        repository: tonyAllTrue/musical-dollop
+        ref: ${{ inputs.source-ref }}
+        fetch-depth: 1
+        path: .llm-security-scanner
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        cd .llm-security-scanner
+        pip install -r requirements.txt
+
+    - name: Run security scan script
+      id: scan
+      continue-on-error: true
+      shell: bash
+      working-directory: .llm-security-scanner
+      env:
+        API_KEY: ${{ inputs.alltrue-api-key }}
+        API_URL: ${{ inputs.alltrue-api-url }}
+        CUSTOMER_ID: ${{ inputs.alltrue-customer-id }}
+        ORGANIZATION_ID: ${{ inputs.alltrue-organization-id }}
+        
+        # Execution toggles
+        ENABLE_LLM_PENTEST: ${{ inputs.enable-llm-pentest }}
+        ENABLE_MODEL_SCANNING: ${{ inputs.enable-model-scanning }}
+        
+        # Inventory
+        INVENTORY_SCOPE: ${{ inputs.inventory-scope }}
+        PROJECT_IDS: ${{ inputs.project-ids }}
+        TARGET_RESOURCE_IDS: ${{ inputs.target-resource-ids }}
+        TARGET_RESOURCE_NAMES: ${{ inputs.target-resource-names }}
+        
+        # LLM Pentest
+        TARGET_TEMPLATE_NAME: ${{ inputs.pentest-template }}
+        
+        # Model Scanning
+        MODEL_SCAN_POLICIES: ${{ inputs.model-scan-policies }}
+        MODEL_SCAN_DESCRIPTION: ${{ inputs.model-scan-description }}
+        
+        # Failure thresholds
+        FAIL_OUTCOME_AT_OR_ABOVE: ${{ inputs.fail-outcome-at-or-above }}
+        ON_THRESHOLD_ACTION: ${{ inputs.on-threshold-action }}
+        ON_HARD_FAILURES_ACTION: ${{ inputs.on-hard-failures-action }}
+        
+        # GitHub Issues
+        GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
+        GITHUB_REPOSITORY: ${{ inputs.github-repository != '' && inputs.github-repository || github.repository }}
+        GITHUB_DEFAULT_LABELS: ${{ inputs.github-default-labels }}
+        GITHUB_ASSIGNEES: ${{ inputs.github-assignees }}
+        CATEGORY_ISSUE_MIN_SEVERITY: ${{ inputs.category-issue-min-severity }}
+        
+        # Concurrency & Polling
+        MAX_CONCURRENT_PENTESTS: ${{ inputs.max-concurrent-pentests }}
+        START_STAGGER_SECS: ${{ inputs.start-stagger-secs }}
+        MAX_START_RETRIES: ${{ inputs.max-start-retries }}
+        START_RETRY_DELAY: ${{ inputs.start-retry-delay }}
+        POLL_TIMEOUT_SECS: ${{ inputs.poll-timeout-secs }}
+        POLL_TIMEOUT_ACTION: ${{ inputs.poll-timeout-action }}
+        GRAPHQL_EXTENDED_TIMEOUT_SECS: ${{ inputs.graphql-extended-timeout-secs }}
+        GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
+      run: python run_pentest.py
+
+    - name: Copy results to workspace
+      if: always()
+      shell: bash
+      run: |
+        cp .llm-security-scanner/pentest_results_*.csv . 2>/dev/null || true
+        cp .llm-security-scanner/pentest_results_summary.json . 2>/dev/null || true
+        cp .llm-security-scanner/model_scan_results_summary.json . 2>/dev/null || true
+
+    - name: Extract outcome for output
+      id: extract-outcome
+      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      shell: bash
+      run: |
+        OUTCOME="Unknown"
+        
+        # Check pentest results
+        if [ -f "pentest_results_summary.json" ]; then
+          PENTEST_OUTCOME=$(python -c "import json,sys; d=json.load(open('pentest_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if ('Critical' in o or 'Poor' in o) else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown'))))" 2>/dev/null || echo "Unknown")
+          echo "Pentest worst outcome: $PENTEST_OUTCOME"
+        fi
+        
+        # Check model scan results
+        if [ -f "model_scan_results_summary.json" ]; then
+          MODEL_OUTCOME=$(python -c "import json,sys; d=json.load(open('model_scan_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if ('Critical' in o or 'Poor' in o) else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown'))))" 2>/dev/null || echo "Unknown")
+          echo "Model scan worst outcome: $MODEL_OUTCOME"
+        fi
+        
+        # Determine overall worst outcome
+        if [ -f "pentest_results_summary.json" ] && [ -f "model_scan_results_summary.json" ]; then
+          # Both exist - take worse of the two
+          if [ "$PENTEST_OUTCOME" = "Critical" ] || [ "$MODEL_OUTCOME" = "Critical" ]; then
+            OUTCOME="Critical"
+          elif [ "$PENTEST_OUTCOME" = "Poor" ] || [ "$MODEL_OUTCOME" = "Poor" ]; then
+            OUTCOME="Poor"
+          elif [ "$PENTEST_OUTCOME" = "Moderate" ] || [ "$MODEL_OUTCOME" = "Moderate" ]; then
+            OUTCOME="Moderate"
+          elif [ "$PENTEST_OUTCOME" = "Good" ] || [ "$MODEL_OUTCOME" = "Good" ]; then
+            OUTCOME="Good"
+          elif [ "$PENTEST_OUTCOME" = "Excellent" ] || [ "$MODEL_OUTCOME" = "Excellent" ]; then
+            OUTCOME="Excellent"
+          fi
+        elif [ -f "pentest_results_summary.json" ]; then
+          OUTCOME="$PENTEST_OUTCOME"
+        elif [ -f "model_scan_results_summary.json" ]; then
+          OUTCOME="$MODEL_OUTCOME"
+        fi
+        
+        echo "Extracted worst outcome: $OUTCOME"
+        echo "outcome=$OUTCOME" >> "$GITHUB_OUTPUT"
+
+    - name: Decide workflow status
+      id: decide
+      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      shell: bash
+      run: |
+        STATUS="${{ steps.scan.outcome }}"
+        WORST="${{ steps.extract-outcome.outputs.outcome }}"
+        THRESHOLD="${{ inputs.fail-outcome-at-or-above }}"
+        WORST="${WORST:-Unknown}"
+        
+        # If script succeeded, pass
+        if [ "$STATUS" = "success" ]; then
+          echo "status=success" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        
+        # Script failed - determine if it's a real failure or acceptable
+        # Map threshold to severity order: critical=0, poor=1, moderate=2, good=3, excellent=4
+        get_severity_index() {
+          case "${1,,}" in
+            critical) echo 0 ;;
+            poor) echo 1 ;;
+            moderate) echo 2 ;;
+            good) echo 3 ;;
+            excellent) echo 4 ;;
+            unknown) echo 999 ;;
+            *) echo 999 ;;
+          esac
+        }
+        
+        WORST_IDX=$(get_severity_index "$WORST")
+        THRESHOLD_IDX=$(get_severity_index "$THRESHOLD")
+        
+        echo "Worst outcome: $WORST (index: $WORST_IDX)"
+        echo "Threshold: $THRESHOLD (index: $THRESHOLD_IDX)"
+        
+        # If worst is at or above threshold (lower index = more severe), fail
+        if [ "$WORST_IDX" -le "$THRESHOLD_IDX" ] && [ "$WORST_IDX" -ne 999 ]; then
+          echo "status=failure" >> "$GITHUB_OUTPUT"
+        else
+          echo "status=neutral" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Upload with timestamp
+      if: always()
+      shell: bash
+      run: |
+        TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+        echo "timestamp=$TIMESTAMP" >> "$GITHUB_ENV"
+
+    - name: Upload pentest CSV results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pentest-csv-results-${{ env.timestamp }}
+        path: pentest_results_*.csv
+        if-no-files-found: ignore
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Upload pentest summary JSON
+      if: always() && hashFiles('pentest_results_summary.json') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: pentest-summary-${{ env.timestamp }}
+        path: pentest_results_summary.json
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Upload model scan summary JSON
+      if: always() && hashFiles('model_scan_results_summary.json') != ''
+      uses: actions/upload-artifact@v4
+      with:
+        name: model-scan-summary-${{ env.timestamp }}
+        path: model_scan_results_summary.json
+        retention-days: ${{ inputs.artifact-retention-days }}
+
+    - name: Check scan outcome and fail workflow if needed
+      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      shell: bash
+      run: |
+        if [ "${{ steps.decide.outputs.status }}" = "failure" ]; then
+          echo "Security scan failed: outcome threshold breached. (or hard failures)"
+          exit 1
+        elif [ "${{ steps.decide.outputs.status }}" = "neutral" ]; then
+          echo "Security scan finished with neutral status."
+          exit 0
+        else
+          echo "Security scan completed successfully."
+        fi
