@@ -63,9 +63,9 @@ inputs:
   
   # ---------- Model scanning parameters ----------
   model-scan-policies:
-    description: 'Comma-separated model scan policies (empty = all)'
+    description: 'Comma-separated model scan policies'
     required: false
-    default: ''
+    default: 'model-scan-code-execution-prohibited,model-scan-input-output-operations-prohibited,model-scan-network-access-prohibited,model-scan-malware-signatures-prohibited'
   model-scan-description:
     description: 'Description for model scans'
     required: false
@@ -87,7 +87,7 @@ inputs:
   
   # ---------- GitHub Issues integration ----------
   github-token:
-    description: 'GitHub token for creating issues (uses GITHUB_TOKEN by default)'
+    description: 'GitHub token for creating issues'
     required: false
     default: ''
   github-repository:
