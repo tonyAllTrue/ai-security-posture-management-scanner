@@ -65,7 +65,7 @@ inputs:
   model-scan-policies:
     description: 'Comma-separated model scan policies'
     required: false
-    default: 'model-scan-code-execution-prohibited,model-scan-input-output-operations-prohibited,model-scan-network-access-prohibited,model-scan-malware-signatures-prohibited'
+    default: 'model-scan-code-execution-prohibited,model-scan-input-output-operations-prohibited,model-scan-network-access-prohibited,model-scan-malware-signatures-prohibited,model-custom-layers-prohibited'
   model-scan-description:
     description: 'Description for model scans'
     required: false
