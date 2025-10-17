@@ -18,7 +18,11 @@ inputs:
     description: 'AllTrue customer ID'
     required: true
   alltrue-organization-id:
-    description: 'AllTrue organization ID'
+    description: 'AllTrue organization ID (UUID)'
+    required: false
+    default: ''
+  alltrue-organization-name:
+    description: 'AllTrue organization name (will be resolved to ID at runtime)'
     required: false
     default: ''
   
@@ -43,7 +47,11 @@ inputs:
     required: false
     default: 'organization'
   project-ids:
-    description: 'Comma-separated project IDs (for project scope)'
+    description: 'Comma-separated project IDs (UUIDs) for project scope'
+    required: false
+    default: ''
+  project-names:
+    description: 'Comma-separated project names (will be resolved to IDs at runtime)'
     required: false
     default: ''
   target-resource-ids:
@@ -191,6 +199,7 @@ runs:
         API_URL: ${{ inputs.alltrue-api-url }}
         CUSTOMER_ID: ${{ inputs.alltrue-customer-id }}
         ORGANIZATION_ID: ${{ inputs.alltrue-organization-id }}
+        ORGANIZATION_NAME: ${{ inputs.alltrue-organization-name }}
         
         # Execution toggles
         ENABLE_LLM_PENTEST: ${{ inputs.enable-llm-pentest }}
@@ -199,6 +208,7 @@ runs:
         # Inventory
         INVENTORY_SCOPE: ${{ inputs.inventory-scope }}
         PROJECT_IDS: ${{ inputs.project-ids }}
+        PROJECT_NAMES: ${{ inputs.project-names }}
         TARGET_RESOURCE_IDS: ${{ inputs.target-resource-ids }}
         TARGET_RESOURCE_NAMES: ${{ inputs.target-resource-names }}
         
