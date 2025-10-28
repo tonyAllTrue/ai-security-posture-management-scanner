@@ -68,6 +68,26 @@ inputs:
     description: 'Pentest template name to use'
     required: false
     default: 'Prompt Injection'
+  pentest-model-mapping:
+    description: 'Map resource types to specific models (format: ResourceType1:model1,ResourceType2:model2)'
+    required: false
+    default: ''
+  pentest-apply-guardrails:
+    description: 'Apply guardrails during pentest execution'
+    required: false
+    default: 'false'
+  pentest-system-prompt-enabled:
+    description: 'Enable system prompt configuration before pentesting'
+    required: false
+    default: 'false'
+  pentest-system-prompt-text:
+    description: 'Custom system prompt text to configure on LLM endpoints'
+    required: false
+    default: ''
+  pentest-cleanup-system-prompt:
+    description: 'Clear system prompt from resource after pentest completes'
+    required: false
+    default: 'true'
   
   # ---------- Model scanning parameters ----------
   model-scan-policies:
@@ -214,6 +234,15 @@ runs:
         
         # LLM Pentest
         TARGET_TEMPLATE_NAME: ${{ inputs.pentest-template }}
+        # --- Advanced Pentest Controls  ---
+        # Model selection by resource type
+        PENTEST_MODEL_MAPPING: ${{ inputs.pentest-model-mapping }}
+        # Guardrails on/off
+        PENTEST_APPLY_GUARDRAILS: ${{ inputs.pentest-apply-guardrails }}
+        # System prompt plumbing
+        PENTEST_SYSTEM_PROMPT_ENABLED: ${{ inputs.pentest-system-prompt-enabled }}
+        PENTEST_SYSTEM_PROMPT_TEXT: ${{ inputs.pentest-system-prompt-text }}
+        PENTEST_CLEANUP_SYSTEM_PROMPT: ${{ inputs.pentest-cleanup-system-prompt }}
         
         # Model Scanning
         MODEL_SCAN_POLICIES: ${{ inputs.model-scan-policies }}
