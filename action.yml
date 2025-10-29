@@ -68,6 +68,10 @@ inputs:
     description: 'Pentest template name to use'
     required: false
     default: 'Prompt Injection'
+  pentest-num-attempts:
+    description: 'Number of attempts per test case to account for LLM response variability (1-5 recommended)'
+    required: false
+    default: '1'
   pentest-model-mapping:
     description: 'Map resource types to specific models (format: ResourceType1:model1,ResourceType2:model2)'
     required: false
@@ -235,6 +239,7 @@ runs:
         # LLM Pentest
         TARGET_TEMPLATE_NAME: ${{ inputs.pentest-template }}
         # --- Advanced Pentest Controls  ---
+        PENTEST_NUM_ATTEMPTS: ${{ inputs.pentest-num-attempts }}
         # Model selection by resource type
         PENTEST_MODEL_MAPPING: ${{ inputs.pentest-model-mapping }}
         # Guardrails on/off
