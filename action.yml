@@ -202,14 +202,10 @@ inputs:
     description: 'What to do on poll timeout: fail|continue|partial'
     required: false
     default: 'fail'
-  graphql-extended-timeout-secs:
-    description: 'Extra seconds for extended GraphQL polling after RUNNING timeouts'
-    required: false
-    default: '1800'
   graphql-poll-interval-secs:
-    description: 'Interval (secs) between extended GraphQL polls'
+    description: 'Interval (seconds) between GraphQL polls for execution completion'
     required: false
-    default: '120'
+    default: '30'
   
   # ---------- Misc ----------
   artifact-retention-days:
@@ -317,7 +313,6 @@ runs:
         START_RETRY_DELAY: ${{ inputs.start-retry-delay }}
         POLL_TIMEOUT_SECS: ${{ inputs.poll-timeout-secs }}
         POLL_TIMEOUT_ACTION: ${{ inputs.poll-timeout-action }}
-        GRAPHQL_EXTENDED_TIMEOUT_SECS: ${{ inputs.graphql-extended-timeout-secs }}
         GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
       run: python run_pentest.py
 
