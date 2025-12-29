@@ -197,7 +197,7 @@ inputs:
   poll-timeout-secs:
     description: 'Timeout in seconds for polling operations'
     required: false
-    default: '3600'
+    default: '5400'
   poll-timeout-action:
     description: 'What to do on poll timeout: fail|continue|partial'
     required: false
