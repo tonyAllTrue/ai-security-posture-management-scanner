@@ -334,13 +334,13 @@ runs:
         
         # Check pentest results
         if [ -f "pentest_results_summary.json" ]; then
-          PENTEST_OUTCOME=$(python -c "import json,sys; d=json.load(open('pentest_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if ('Critical' in o or 'Poor' in o) else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown'))))" 2>/dev/null || echo "Unknown")
+          PENTEST_OUTCOME=$(python -c "import json,sys; d=json.load(open('pentest_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
           echo "Pentest worst outcome: $PENTEST_OUTCOME"
         fi
         
         # Check model scan results
         if [ -f "model_scan_results_summary.json" ]; then
-          MODEL_OUTCOME=$(python -c "import json,sys; d=json.load(open('model_scan_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if ('Critical' in o or 'Poor' in o) else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown'))))" 2>/dev/null || echo "Unknown")
+          MODEL_OUTCOME=$(python -c "import json,sys; d=json.load(open('model_scan_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
           echo "Model scan worst outcome: $MODEL_OUTCOME"
         fi
         
