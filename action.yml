@@ -59,7 +59,7 @@ inputs:
     required: false
     default: ''
   target-resource-names:
-    description: 'Comma-separated resource names (for resource scope)'
+    description: 'Comma-separated resource patterns (supports: substring, repo:org/name, file:name, =exact, *wildcard*)'
     required: false
     default: ''
   
