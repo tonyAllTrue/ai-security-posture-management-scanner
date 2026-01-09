@@ -108,6 +108,18 @@ inputs:
     description: 'Clear dataset from resource after pentest completes'
     required: false
     default: 'true'
+  pentest-resource-system-description-enabled:
+    description: "Enable configuring a resource system description on the endpoint before testing"
+    required: false
+    default: false
+  pentest-resource-system-description-text:
+    description: "Resource system description text to configure on the endpoint before testing"
+    required: false
+    default: ""
+  pentest-cleanup-resource-system-description:
+    description: "Clear the configured resource system description from the endpoint after testing"
+    required: false
+    default: false
   
   # ---------- Model scanning parameters ----------
   model-scan-policies:
@@ -282,6 +294,9 @@ runs:
         PENTEST_DATASET_ID: ${{ inputs.pentest-dataset-id }}
         PENTEST_DATASET_NAME: ${{ inputs.pentest-dataset-name }}
         PENTEST_CLEANUP_DATASET: ${{ inputs.pentest-cleanup-dataset }}
+        PENTEST_RESOURCE_SYSTEM_DESCRIPTION_ENABLED: ${{ inputs.pentest-resource-system-description-enabled }}
+        PENTEST_RESOURCE_SYSTEM_DESCRIPTION_TEXT: ${{ inputs.pentest-resource-system-description-text }}
+        PENTEST_CLEANUP_RESOURCE_SYSTEM_DESCRIPTION: ${{ inputs.pentest-cleanup-resource-system-description }}
         
         # Model Scanning
         MODEL_SCAN_POLICIES: ${{ inputs.model-scan-policies }}
@@ -327,63 +342,53 @@ runs:
 
     - name: Extract outcome for output
       id: extract-outcome
-      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      if: always()
       shell: bash
       run: |
         OUTCOME="Unknown"
-        
+        PENTEST_OUTCOME="Unknown"
+        MODEL_OUTCOME="Unknown"
+
         # Check pentest results
         if [ -f "pentest_results_summary.json" ]; then
-          PENTEST_OUTCOME=$(python -c "import json,sys; d=json.load(open('pentest_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
+          PENTEST_OUTCOME=$(python -c "import json; d=json.load(open('pentest_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
           echo "Pentest worst outcome: $PENTEST_OUTCOME"
         fi
-        
+
         # Check model scan results
         if [ -f "model_scan_results_summary.json" ]; then
-          MODEL_OUTCOME=$(python -c "import json,sys; d=json.load(open('model_scan_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
+          MODEL_OUTCOME=$(python -c "import json; d=json.load(open('model_scan_results_summary.json')); o=[r.get('outcome') for r in d if r.get('outcome')]; print('Critical' if 'Critical' in o else ('Poor' if 'Poor' in o else ('Moderate' if 'Moderate' in o else ('Good' if 'Good' in o else ('Excellent' if 'Excellent' in o else 'Unknown')))))" 2>/dev/null || echo "Unknown")
           echo "Model scan worst outcome: $MODEL_OUTCOME"
         fi
-        
-        # Determine overall worst outcome
-        if [ -f "pentest_results_summary.json" ] && [ -f "model_scan_results_summary.json" ]; then
-          # Both exist - take worse of the two
-          if [ "$PENTEST_OUTCOME" = "Critical" ] || [ "$MODEL_OUTCOME" = "Critical" ]; then
-            OUTCOME="Critical"
-          elif [ "$PENTEST_OUTCOME" = "Poor" ] || [ "$MODEL_OUTCOME" = "Poor" ]; then
-            OUTCOME="Poor"
-          elif [ "$PENTEST_OUTCOME" = "Moderate" ] || [ "$MODEL_OUTCOME" = "Moderate" ]; then
-            OUTCOME="Moderate"
-          elif [ "$PENTEST_OUTCOME" = "Good" ] || [ "$MODEL_OUTCOME" = "Good" ]; then
-            OUTCOME="Good"
-          elif [ "$PENTEST_OUTCOME" = "Excellent" ] || [ "$MODEL_OUTCOME" = "Excellent" ]; then
-            OUTCOME="Excellent"
-          fi
-        elif [ -f "pentest_results_summary.json" ]; then
-          OUTCOME="$PENTEST_OUTCOME"
-        elif [ -f "model_scan_results_summary.json" ]; then
-          OUTCOME="$MODEL_OUTCOME"
+
+        # Determine overall worst outcome (worst wins)
+        if [ "$PENTEST_OUTCOME" = "Critical" ] || [ "$MODEL_OUTCOME" = "Critical" ]; then
+          OUTCOME="Critical"
+        elif [ "$PENTEST_OUTCOME" = "Poor" ] || [ "$MODEL_OUTCOME" = "Poor" ]; then
+          OUTCOME="Poor"
+        elif [ "$PENTEST_OUTCOME" = "Moderate" ] || [ "$MODEL_OUTCOME" = "Moderate" ]; then
+          OUTCOME="Moderate"
+        elif [ "$PENTEST_OUTCOME" = "Good" ] || [ "$MODEL_OUTCOME" = "Good" ]; then
+          OUTCOME="Good"
+        elif [ "$PENTEST_OUTCOME" = "Excellent" ] || [ "$MODEL_OUTCOME" = "Excellent" ]; then
+          OUTCOME="Excellent"
         fi
-        
+
         echo "Extracted worst outcome: $OUTCOME"
         echo "outcome=$OUTCOME" >> "$GITHUB_OUTPUT"
 
     - name: Decide workflow status
       id: decide
-      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      if: always()
       shell: bash
       run: |
         STATUS="${{ steps.scan.outcome }}"
         WORST="${{ steps.extract-outcome.outputs.outcome }}"
         THRESHOLD="${{ inputs.fail-outcome-at-or-above }}"
+        THRESHOLD_ACTION="${{ inputs.on-threshold-action }}"
+        HARD_ACTION="${{ inputs.on-hard-failures-action }}"
         WORST="${WORST:-Unknown}"
-        
-        # If script succeeded, pass
-        if [ "$STATUS" = "success" ]; then
-          echo "status=success" >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-        
-        # Script failed - determine if it's a real failure or acceptable
+
         # Map threshold to severity order: critical=0, poor=1, moderate=2, good=3, excellent=4
         get_severity_index() {
           case "${1,,}" in
@@ -393,17 +398,42 @@ runs:
             good) echo 3 ;;
             excellent) echo 4 ;;
             unknown) echo 999 ;;
+            "") echo 999 ;;   # empty threshold disables
             *) echo 999 ;;
           esac
         }
-        
+
         WORST_IDX=$(get_severity_index "$WORST")
         THRESHOLD_IDX=$(get_severity_index "$THRESHOLD")
-        
+
+        echo "Scan step outcome: $STATUS"
         echo "Worst outcome: $WORST (index: $WORST_IDX)"
         echo "Threshold: $THRESHOLD (index: $THRESHOLD_IDX)"
-        
-        # If worst is at or above threshold (lower index = more severe), fail
+        echo "on-threshold-action: $THRESHOLD_ACTION"
+        echo "on-hard-failures-action: $HARD_ACTION"
+
+        # Default classification:
+        # - If scan script succeeded => success
+        # - If scan script failed => decide neutral/failure based on threshold-action + worst outcome.
+        if [ "$STATUS" = "success" ]; then
+          echo "status=success" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Script failed:
+        # If user isn't failing on threshold breaches, treat as neutral by default.
+        if [ "$THRESHOLD_ACTION" != "fail" ] && [ "$THRESHOLD_ACTION" != "both" ]; then
+          echo "status=neutral" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # If threshold is disabled (''), don't fail based on outcomes.
+        if [ "$THRESHOLD_IDX" -eq 999 ]; then
+          echo "status=neutral" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Fail only if worst is >= threshold (lower index is worse severity) and not Unknown.
         if [ "$WORST_IDX" -le "$THRESHOLD_IDX" ] && [ "$WORST_IDX" -ne 999 ]; then
           echo "status=failure" >> "$GITHUB_OUTPUT"
         else
@@ -452,15 +482,19 @@ runs:
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Check scan outcome and fail workflow if needed
-      if: always() && (inputs.on-threshold-action == 'fail' || inputs.on-threshold-action == 'both')
+      if: always()
       shell: bash
       run: |
-        if [ "${{ steps.decide.outputs.status }}" = "failure" ]; then
-          echo "Security scan failed: outcome threshold breached. (or hard failures)"
+        STATUS="${{ steps.decide.outputs.status }}"
+        STATUS="${STATUS:-success}"
+
+        echo "Final security scan status: ${STATUS}"
+
+        if [ "$STATUS" = "failure" ]; then
+          echo "Security scan failed: outcome threshold breached (or hard failures)."
           exit 1
-        elif [ "${{ steps.decide.outputs.status }}" = "neutral" ]; then
-          echo "Security scan finished with neutral status."
-          exit 0
-        else
-          echo "Security scan completed successfully."
         fi
+
+        # success or neutral -> do not fail the workflow
+        echo "Security scan did not fail the workflow (status=${STATUS})."
+        exit 0
