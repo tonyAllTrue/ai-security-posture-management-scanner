@@ -25,12 +25,12 @@ inputs:
     description: 'AllTrue organization name (will be resolved to ID at runtime)'
     required: false
     default: ''
-  
+
   python-version:
     description: 'Python version to use'
     required: false
     default: '3.11'
-  
+
   # ---------- Execution toggles ----------
   enable-llm-pentest:
     description: 'Enable LLM endpoint pentesting'
@@ -40,7 +40,7 @@ inputs:
     description: 'Enable model scanning'
     required: false
     default: 'false'
-  
+
   # ---------- Inventory scope ----------
   inventory-scope:
     description: 'Inventory scope: organization|project|resource'
@@ -62,7 +62,7 @@ inputs:
     description: 'Comma-separated resource patterns (supports: substring, repo:org/name, file:name, =exact, *wildcard*)'
     required: false
     default: ''
-  
+
   # ---------- LLM Pentest parameters ----------
   pentest-template:
     description: 'Pentest template name to use'
@@ -130,7 +130,7 @@ inputs:
     description: 'Description for model scans'
     required: false
     default: 'CI Model Scan'
-  
+
   # ---------- HuggingFace Model Onboarding ----------
   huggingface-onboarding-enabled:
     description: 'Enable HuggingFace model onboarding before scanning'
@@ -141,7 +141,11 @@ inputs:
     required: false
     default: ''
   huggingface-onboarding-project-id:
-    description: 'Project ID to associate onboarded models with (optional, uses first project from PROJECT_IDS if not specified)'
+    description: 'Project ID to associate onboarded models with (optional, uses first project from PROJECT_IDS/PROJECT_NAMES if not specified)'
+    required: false
+    default: ''
+  huggingface-onboarding-project-name:
+    description: 'Project name to associate onboarded models with (preferred). If set, will be resolved to ID at runtime; takes precedence over huggingface-onboarding-project-id.'
     required: false
     default: ''
   huggingface-onboarding-wait-secs:
@@ -152,7 +156,7 @@ inputs:
     description: 'Skip inventory selection and scan only onboarded HuggingFace models'
     required: false
     default: 'false'
-  
+
   # ---------- Failure thresholds ----------
   fail-outcome-at-or-above:
     description: 'Fail on outcomes at/above this level: critical|poor|moderate|good'
@@ -166,7 +170,7 @@ inputs:
     description: 'Action on hard failures: fail|issue|both|ignore'
     required: false
     default: 'ignore'
-  
+
   # ---------- GitHub Issues integration ----------
   github-token:
     description: 'GitHub token for creating issues'
@@ -218,7 +222,7 @@ inputs:
     description: 'Interval (seconds) between GraphQL polls for execution completion'
     required: false
     default: '30'
-  
+
   # ---------- Misc ----------
   artifact-retention-days:
     description: 'Days to retain artifacts'
@@ -270,18 +274,18 @@ runs:
         CUSTOMER_ID: ${{ inputs.alltrue-customer-id }}
         ORGANIZATION_ID: ${{ inputs.alltrue-organization-id }}
         ORGANIZATION_NAME: ${{ inputs.alltrue-organization-name }}
-        
+
         # Execution toggles
         ENABLE_LLM_PENTEST: ${{ inputs.enable-llm-pentest }}
         ENABLE_MODEL_SCANNING: ${{ inputs.enable-model-scanning }}
-        
+
         # Inventory
         INVENTORY_SCOPE: ${{ inputs.inventory-scope }}
         PROJECT_IDS: ${{ inputs.project-ids }}
         PROJECT_NAMES: ${{ inputs.project-names }}
         TARGET_RESOURCE_IDS: ${{ inputs.target-resource-ids }}
         TARGET_RESOURCE_NAMES: ${{ inputs.target-resource-names }}
-        
+
         # LLM Pentest
         TARGET_TEMPLATE_NAME: ${{ inputs.pentest-template }}
         PENTEST_NUM_ATTEMPTS: ${{ inputs.pentest-num-attempts }}
@@ -297,30 +301,31 @@ runs:
         PENTEST_RESOURCE_SYSTEM_DESCRIPTION_ENABLED: ${{ inputs.pentest-resource-system-description-enabled }}
         PENTEST_RESOURCE_SYSTEM_DESCRIPTION_TEXT: ${{ inputs.pentest-resource-system-description-text }}
         PENTEST_CLEANUP_RESOURCE_SYSTEM_DESCRIPTION: ${{ inputs.pentest-cleanup-resource-system-description }}
-        
+
         # Model Scanning
         MODEL_SCAN_POLICIES: ${{ inputs.model-scan-policies }}
         MODEL_SCAN_DESCRIPTION: ${{ inputs.model-scan-description }}
-        
+
         # HuggingFace Onboarding
         HUGGINGFACE_ONBOARDING_ENABLED: ${{ inputs.huggingface-onboarding-enabled }}
         HUGGINGFACE_MODELS_TO_ONBOARD: ${{ inputs.huggingface-models-to-onboard }}
         HUGGINGFACE_ONBOARDING_PROJECT_ID: ${{ inputs.huggingface-onboarding-project-id }}
+        HUGGINGFACE_ONBOARDING_PROJECT_NAME: ${{ inputs.huggingface-onboarding-project-name }}
         HUGGINGFACE_ONBOARDING_WAIT_SECS: ${{ inputs.huggingface-onboarding-wait-secs }}
         HUGGINGFACE_ONBOARDING_ONLY: ${{ inputs.huggingface-onboarding-only }}
-        
+
         # Failure thresholds
         FAIL_OUTCOME_AT_OR_ABOVE: ${{ inputs.fail-outcome-at-or-above }}
         ON_THRESHOLD_ACTION: ${{ inputs.on-threshold-action }}
         ON_HARD_FAILURES_ACTION: ${{ inputs.on-hard-failures-action }}
-        
+
         # GitHub Issues
         GITHUB_TOKEN: ${{ inputs.github-token || github.token }}
         GITHUB_REPOSITORY: ${{ inputs.github-repository != '' && inputs.github-repository || github.repository }}
         GITHUB_DEFAULT_LABELS: ${{ inputs.github-default-labels }}
         GITHUB_ASSIGNEES: ${{ inputs.github-assignees }}
         CATEGORY_ISSUE_MIN_SEVERITY: ${{ inputs.category-issue-min-severity }}
-        
+
         # Concurrency & Polling
         MAX_CONCURRENT_PENTESTS: ${{ inputs.max-concurrent-pentests }}
         START_STAGGER_SECS: ${{ inputs.start-stagger-secs }}
