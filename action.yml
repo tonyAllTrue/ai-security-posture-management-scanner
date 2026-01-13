@@ -229,7 +229,7 @@ inputs:
     required: false
     default: '30'
   source-ref:
-    description: 'Ref of musical-dollop to checkout (e.g., main)'
+    description: 'Ref of alltrue-ai-gh-action-scripts to checkout (e.g., main)'
     required: false
     default: 'main'
 
@@ -250,10 +250,10 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout musical-dollop
+    - name: Checkout alltrue-ai-gh-action-scripts repository
       uses: actions/checkout@v4
       with:
-        repository: tonyAllTrue/musical-dollop
+        repository: AllTrue-ai/alltrue-ai-gh-action-scripts
         ref: ${{ inputs.source-ref }}
         fetch-depth: 1
         path: .llm-security-scanner
