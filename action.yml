@@ -246,7 +246,6 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    # Recommended: ensure the caller's repo is available in the workspace.
     - name: Checkout caller repository
       uses: actions/checkout@v4
 
@@ -259,12 +258,14 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        python -m pip install -r ${{ github.action_path }}/requirements.txt
+        python -m pip install -r "${{ github.action_path }}/requirements.txt"
 
+    # Run the scanner *from the caller workspace* so JSON/CSVs land somewhere the workflow can see.
     - name: Run security scan script
       id: scan
       continue-on-error: true
       shell: bash
+      working-directory: ${{ github.workspace }}
       env:
         API_KEY: ${{ inputs.alltrue-api-key }}
         API_URL: ${{ inputs.alltrue-api-url }}
@@ -332,15 +333,42 @@ runs:
         POLL_TIMEOUT_ACTION: ${{ inputs.poll-timeout-action }}
         GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
       run: |
+        set -euo pipefail
+
+        RESULTS_DIR="${GITHUB_WORKSPACE}/.alltrue-results"
+        mkdir -p "$RESULTS_DIR"
+
         export PYTHONPATH="${{ github.action_path }}:$PYTHONPATH"
-        cd ${{ github.action_path }}
-        python scripts/run_pentest.py
+
+        echo "Using RESULTS_DIR=$RESULTS_DIR"
+        cd "$RESULTS_DIR"
+
+        # Run the action's script, but from the workspace results directory.
+        python "${{ github.action_path }}/scripts/run_pentest.py"
 
     - name: Extract outcome for outputs
       id: extract-outcome
       if: always()
       shell: bash
+      working-directory: ${{ github.workspace }}
       run: |
+        set -euo pipefail
+        RESULTS_DIR="${GITHUB_WORKSPACE}/.alltrue-results"
+
+        normalize_outcome () {
+          # Normalize common casing variants to: Critical|Poor|Moderate|Good|Excellent|Unknown
+          local x="${1:-Unknown}"
+          case "${x,,}" in
+            critical) echo "Critical" ;;
+            poor) echo "Poor" ;;
+            moderate) echo "Moderate" ;;
+            good) echo "Good" ;;
+            excellent) echo "Excellent" ;;
+            unknown|"") echo "Unknown" ;;
+            *) echo "Unknown" ;;
+          esac
+        }
+
         worst_from_json () {
           local file="$1"
           if [ ! -f "$file" ]; then
@@ -349,12 +377,37 @@ runs:
           fi
           python - "$file" <<'PY'
         import json, sys
+
         file = sys.argv[1]
-        d = json.load(open(file))
-        o = [r.get("outcome") for r in d if r.get("outcome")]
-        order = ["Critical","Poor","Moderate","Good","Excellent"]
+        data = json.load(open(file))
+
+        # Accept either:
+        # - list[{"outcome": "..."}]
+        # - {"results": list[...]} or other dict wrappers
+        if isinstance(data, dict):
+            if "results" in data and isinstance(data["results"], list):
+                rows = data["results"]
+            else:
+                # Try best-effort: if any value is a list, prefer that
+                rows = next((v for v in data.values() if isinstance(v, list)), [])
+        elif isinstance(data, list):
+            rows = data
+        else:
+            rows = []
+
+        outcomes = []
+        for r in rows:
+            if isinstance(r, dict) and r.get("outcome"):
+                outcomes.append(str(r["outcome"]))
+
+        # Prefer worst -> best
+        order = ["Critical", "Poor", "Moderate", "Good", "Excellent"]
+        # Also accept lowercase variants in source files
+        norm = {o.lower(): o for o in order}
+
+        found = {norm.get(o.lower(), o) for o in outcomes}
         for lvl in order:
-            if lvl in o:
+            if lvl in found:
                 print(lvl)
                 break
         else:
@@ -362,8 +415,11 @@ runs:
         PY
         }
 
-        PENTEST_OUTCOME="$(worst_from_json pentest_results_summary.json)"
-        MODEL_OUTCOME="$(worst_from_json model_scan_results_summary.json)"
+        PENTEST_OUTCOME_RAW="$(worst_from_json "${RESULTS_DIR}/pentest_results_summary.json")"
+        MODEL_OUTCOME_RAW="$(worst_from_json "${RESULTS_DIR}/model_scan_results_summary.json")"
+
+        PENTEST_OUTCOME="$(normalize_outcome "$PENTEST_OUTCOME_RAW")"
+        MODEL_OUTCOME="$(normalize_outcome "$MODEL_OUTCOME_RAW")"
 
         OVERALL="Unknown"
         if [ "$PENTEST_OUTCOME" = "Critical" ] || [ "$MODEL_OUTCOME" = "Critical" ]; then
@@ -391,6 +447,8 @@ runs:
       if: always()
       shell: bash
       run: |
+        set -euo pipefail
+
         PENTEST_WORST="${{ steps.extract-outcome.outputs.pentest_outcome }}"
         MODEL_WORST="${{ steps.extract-outcome.outputs.model_outcome }}"
         OVERALL_WORST="${{ steps.extract-outcome.outputs.overall_outcome }}"
@@ -405,8 +463,7 @@ runs:
             moderate) echo 2 ;;
             good) echo 3 ;;
             excellent) echo 4 ;;
-            unknown) echo 999 ;;
-            "") echo 999 ;;
+            unknown|"") echo 999 ;;
             *) echo 999 ;;
           esac
         }
@@ -423,12 +480,7 @@ runs:
             return
           fi
 
-          if [ "$threshold_idx" -eq 999 ]; then
-            echo "neutral"
-            return
-          fi
-
-          if [ "$worst_idx" -eq 999 ]; then
+          if [ "$threshold_idx" -eq 999 ] || [ "$worst_idx" -eq 999 ]; then
             echo "neutral"
             return
           fi
@@ -456,15 +508,17 @@ runs:
       if: always()
       shell: bash
       run: |
+        set -euo pipefail
         TIMESTAMP=$(date +%Y%m%d-%H%M%S)
         echo "timestamp=$TIMESTAMP" >> "$GITHUB_ENV"
 
+    # Upload artifacts from the workspace results directory
     - name: Upload pentest CSV results
       if: always()
       uses: actions/upload-artifact@v4
       with:
         name: pentest-csv-results-${{ env.timestamp }}
-        path: pentest_results_*.csv
+        path: ${{ github.workspace }}/.alltrue-results/pentest_results_*.csv
         if-no-files-found: ignore
         retention-days: ${{ inputs.artifact-retention-days }}
 
@@ -473,30 +527,32 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: model-scan-csv-results-${{ env.timestamp }}
-        path: model_scan_results_*.csv
+        path: ${{ github.workspace }}/.alltrue-results/model_scan_results_*.csv
         if-no-files-found: ignore
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Upload pentest summary JSON
-      if: always() && hashFiles('pentest_results_summary.json') != ''
+      if: always() && hashFiles('.alltrue-results/pentest_results_summary.json') != ''
       uses: actions/upload-artifact@v4
       with:
         name: pentest-summary-${{ env.timestamp }}
-        path: pentest_results_summary.json
+        path: ${{ github.workspace }}/.alltrue-results/pentest_results_summary.json
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Upload model scan summary JSON
-      if: always() && hashFiles('model_scan_results_summary.json') != ''
+      if: always() && hashFiles('.alltrue-results/model_scan_results_summary.json') != ''
       uses: actions/upload-artifact@v4
       with:
         name: model-scan-summary-${{ env.timestamp }}
-        path: model_scan_results_summary.json
+        path: ${{ github.workspace }}/.alltrue-results/model_scan_results_summary.json
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Check scan outcome and fail workflow if needed
       if: always()
       shell: bash
       run: |
+        set -euo pipefail
+
         STATUS="${{ steps.decide.outputs.overall_status }}"
         STATUS="${STATUS:-success}"
 
