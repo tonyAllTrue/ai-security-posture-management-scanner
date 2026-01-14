@@ -524,7 +524,7 @@ runs:
       uses: actions/upload-artifact@v4
       with:
         name: alltrue-scan-results-${{ env.timestamp }}
-        path: ${{ github.workspace }}/.alltrue-results/**/*
+        path: ${{ github.workspace }}/.alltrue-results
         if-no-files-found: warn
         retention-days: ${{ inputs.artifact-retention-days }}
 
