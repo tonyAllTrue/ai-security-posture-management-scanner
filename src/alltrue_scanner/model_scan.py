@@ -49,15 +49,19 @@ def select_models_and_assets(jwt: str) -> Tuple[List[str], Dict[str, str]]:
 # ---------------------------
 
 def _fail_threshold() -> str:
+    """Return configured threshold or empty string if not set (aligned with summary.py)."""
     env = (config.FAIL_OUTCOME_AT_OR_ABOVE or "").strip().lower()
-    return env if env else "moderate"
+    return env  # Return empty string if not set
 
 
 def _fails_from_outcome(outcome_level: str | None) -> bool:
+    """Check if outcome fails threshold. Returns False if no threshold set."""
+    thr = _fail_threshold()
+    if not thr:  # No threshold configured
+        return False
     norm = config.normalize_outcome(outcome_level)
     if not norm:
         return False
-    thr = _fail_threshold()
     i_norm = config.SEVERITY_INDEX.get(norm)
     i_thr = config.SEVERITY_INDEX.get(thr)
     return (i_norm is not None and i_thr is not None and i_norm <= i_thr)

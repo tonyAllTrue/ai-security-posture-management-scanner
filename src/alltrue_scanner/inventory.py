@@ -145,8 +145,17 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
             resolved_project_ids.extend(resolved_from_ids)
         except Exception as e:
             print(f"[config-resolve] ⚠️  Error validating PROJECT_IDS: {e}")
-            # If resolution fails, assume they're valid UUIDs and add them anyway
-            resolved_project_ids.extend(config.PROJECT_IDS)
+            # If resolution fails, validate UUID format before adding
+            import uuid as _uuid
+            valid_ids = []
+            for pid in config.PROJECT_IDS:
+                try:
+                    _uuid.UUID(pid)
+                    valid_ids.append(pid)
+                    print(f"[config-resolve] ⚠️  Using PROJECT_ID as UUID (resolution failed): {pid}")
+                except ValueError:
+                    print(f"[config-resolve] ✗ Invalid UUID format in PROJECT_IDS: {pid}")
+            resolved_project_ids.extend(valid_ids)
     
     # Deduplicate project IDs
     resolved_project_ids = list(dict.fromkeys(resolved_project_ids))
@@ -342,6 +351,7 @@ def select_with_scope(
     validate_scope_requirements(scope, resolved_org_id, resolved_project_ids)
     
     # Update config with resolved values for use by other components
+    # IMPORTANT: This mutates global config state. Only call once per execution.
     if resolved_org_id:
         config.ORGANIZATION_ID = resolved_org_id
     if resolved_project_ids:

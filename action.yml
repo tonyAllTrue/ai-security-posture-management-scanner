@@ -333,15 +333,6 @@ runs:
         GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
       run: python scripts/run_pentest.py
 
-    - name: Copy results to workspace
-      if: always()
-      shell: bash
-      run: |
-        cp pentest_results_*.csv . 2>/dev/null || true
-        cp model_scan_results_*.csv . 2>/dev/null || true
-        cp pentest_results_summary.json . 2>/dev/null || true
-        cp model_scan_results_summary.json . 2>/dev/null || true
-
     - name: Extract outcome for outputs
       id: extract-outcome
       if: always()

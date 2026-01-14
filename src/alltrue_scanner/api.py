@@ -1146,6 +1146,7 @@ def poll_model_scan_execution_id(
             jwt_token,
             resource_instance_id=resource_instance_id,
             min_started_at_iso=min_started_at_iso,
+            project_id=project_id,
         )
         if row:
             msid = row.get("modelScanExecutionId")
