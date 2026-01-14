@@ -1,0 +1,36 @@
+# 🛑 Python virtual environments
+venv/
+
+# 🔐 Environment variables
+.env
+
+# 📦 Python dependencies
+__pycache__/
+*.py[cod]
+*.egg
+*.egg-info/
+dist/
+build/
+
+# 🧪 Test and coverage artifacts
+htmlcov/
+.coverage
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+
+# 🧪 Pentest output
+*.csv
+*summary.json
+
+# 💻 VS Code settings (optional, if you're using it)
+.vscode/
+
+# 📁 OS-specific files
+.DS_Store
+Thumbs.db
+
+# 🚀 GitHub Actions artifacts
+.github/workflows/*.log
