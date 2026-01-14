@@ -259,7 +259,7 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
+        python -m pip install -r ${{ github.action_path }}/requirements.txt
 
     - name: Run security scan script
       id: scan
@@ -331,7 +331,10 @@ runs:
         POLL_TIMEOUT_SECS: ${{ inputs.poll-timeout-secs }}
         POLL_TIMEOUT_ACTION: ${{ inputs.poll-timeout-action }}
         GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
-      run: python scripts/run_pentest.py
+      run: |
+        export PYTHONPATH="${{ github.action_path }}:$PYTHONPATH"
+        cd ${{ github.action_path }}
+        python run_pentest.py
 
     - name: Extract outcome for outputs
       id: extract-outcome
