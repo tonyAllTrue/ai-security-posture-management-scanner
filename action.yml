@@ -346,6 +346,31 @@ runs:
         # Run the action's script from the workspace results directory
         python "${{ github.action_path }}/scripts/run_pentest.py"
 
+    - name: Debug locate CSV outputs
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        echo "=== PWD ==="
+        pwd
+
+        echo "=== Workspace results dir ==="
+        ls -la "${{ github.workspace }}/.alltrue-results" || true
+
+        echo "=== Action path dir ==="
+        ls -la "${{ github.action_path }}" || true
+
+        echo "=== Find CSVs under workspace (maxdepth 6) ==="
+        find "${{ github.workspace }}" -maxdepth 6 -type f \( \
+          -name "pentest_results_*.csv" -o -name "model_scan_results_*.csv" \
+        \) -print || true
+
+        echo "=== Find CSVs under action path (maxdepth 2) ==="
+        find "${{ github.action_path }}" -maxdepth 2 -type f \( \
+          -name "pentest_results_*.csv" -o -name "model_scan_results_*.csv" \
+        \) -print || true
+
     - name: Extract outcome for outputs
       id: extract-outcome
       if: always()
