@@ -334,7 +334,7 @@ runs:
       run: |
         export PYTHONPATH="${{ github.action_path }}:$PYTHONPATH"
         cd ${{ github.action_path }}
-        python run_pentest.py
+        python scripts/run_pentest.py
 
     - name: Extract outcome for outputs
       id: extract-outcome
