@@ -338,12 +338,12 @@ runs:
         RESULTS_DIR="${GITHUB_WORKSPACE}/.alltrue-results"
         mkdir -p "$RESULTS_DIR"
 
-        export PYTHONPATH="${{ github.action_path }}:$PYTHONPATH"
+        export PYTHONPATH="${{ github.action_path }}:${PYTHONPATH:-}"
 
         echo "Using RESULTS_DIR=$RESULTS_DIR"
         cd "$RESULTS_DIR"
 
-        # Run the action's script, but from the workspace results directory.
+        # Run the action's script from the workspace results directory
         python "${{ github.action_path }}/scripts/run_pentest.py"
 
     - name: Extract outcome for outputs
