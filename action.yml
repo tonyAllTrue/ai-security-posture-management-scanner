@@ -346,15 +346,6 @@ runs:
         # Run the action's script from the workspace results directory
         python "${{ github.action_path }}/scripts/run_pentest.py"
 
-    # NOTE: remove once stable.
-    - name: Debug locate outputs
-      if: always()
-      shell: bash
-      run: |
-        set -euo pipefail
-        echo "=== Workspace results dir ==="
-        ls -la "${{ github.workspace }}/.alltrue-results" || true
-
     - name: Extract outcome for outputs
       id: extract-outcome
       if: always()
