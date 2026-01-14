@@ -346,30 +346,14 @@ runs:
         # Run the action's script from the workspace results directory
         python "${{ github.action_path }}/scripts/run_pentest.py"
 
-    - name: Debug locate CSV outputs
+    # NOTE: remove once stable.
+    - name: Debug locate outputs
       if: always()
       shell: bash
       run: |
         set -euo pipefail
-
-        echo "=== PWD ==="
-        pwd
-
         echo "=== Workspace results dir ==="
         ls -la "${{ github.workspace }}/.alltrue-results" || true
-
-        echo "=== Action path dir ==="
-        ls -la "${{ github.action_path }}" || true
-
-        echo "=== Find CSVs under workspace (maxdepth 6) ==="
-        find "${{ github.workspace }}" -maxdepth 6 -type f \( \
-          -name "pentest_results_*.csv" -o -name "model_scan_results_*.csv" \
-        \) -print || true
-
-        echo "=== Find CSVs under action path (maxdepth 2) ==="
-        find "${{ github.action_path }}" -maxdepth 2 -type f \( \
-          -name "pentest_results_*.csv" -o -name "model_scan_results_*.csv" \
-        \) -print || true
 
     - name: Extract outcome for outputs
       id: extract-outcome
@@ -413,7 +397,6 @@ runs:
             if "results" in data and isinstance(data["results"], list):
                 rows = data["results"]
             else:
-                # Try best-effort: if any value is a list, prefer that
                 rows = next((v for v in data.values() if isinstance(v, list)), [])
         elif isinstance(data, list):
             rows = data
@@ -425,9 +408,7 @@ runs:
             if isinstance(r, dict) and r.get("outcome"):
                 outcomes.append(str(r["outcome"]))
 
-        # Prefer worst -> best
         order = ["Critical", "Poor", "Moderate", "Good", "Excellent"]
-        # Also accept lowercase variants in source files
         norm = {o.lower(): o for o in order}
 
         found = {norm.get(o.lower(), o) for o in outcomes}
@@ -537,39 +518,14 @@ runs:
         TIMESTAMP=$(date +%Y%m%d-%H%M%S)
         echo "timestamp=$TIMESTAMP" >> "$GITHUB_ENV"
 
-    # Upload artifacts from the workspace results directory
-    - name: Upload pentest CSV results
+    # Upload everything under .alltrue-results as a single artifact (avoids glob issues)
+    - name: Upload AllTrue scan results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: pentest-csv-results-${{ env.timestamp }}
-        path: ${{ github.workspace }}/.alltrue-results/pentest_results_*.csv
-        if-no-files-found: ignore
-        retention-days: ${{ inputs.artifact-retention-days }}
-
-    - name: Upload model scan CSV results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: model-scan-csv-results-${{ env.timestamp }}
-        path: ${{ github.workspace }}/.alltrue-results/model_scan_results_*.csv
-        if-no-files-found: ignore
-        retention-days: ${{ inputs.artifact-retention-days }}
-
-    - name: Upload pentest summary JSON
-      if: always() && hashFiles('.alltrue-results/pentest_results_summary.json') != ''
-      uses: actions/upload-artifact@v4
-      with:
-        name: pentest-summary-${{ env.timestamp }}
-        path: ${{ github.workspace }}/.alltrue-results/pentest_results_summary.json
-        retention-days: ${{ inputs.artifact-retention-days }}
-
-    - name: Upload model scan summary JSON
-      if: always() && hashFiles('.alltrue-results/model_scan_results_summary.json') != ''
-      uses: actions/upload-artifact@v4
-      with:
-        name: model-scan-summary-${{ env.timestamp }}
-        path: ${{ github.workspace }}/.alltrue-results/model_scan_results_summary.json
+        name: alltrue-scan-results-${{ env.timestamp }}
+        path: ${{ github.workspace }}/.alltrue-results/**/*
+        if-no-files-found: warn
         retention-days: ${{ inputs.artifact-retention-days }}
 
     - name: Check scan outcome and fail workflow if needed
