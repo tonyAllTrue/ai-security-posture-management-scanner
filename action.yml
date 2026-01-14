@@ -228,10 +228,6 @@ inputs:
     description: 'Days to retain artifacts'
     required: false
     default: '30'
-  source-ref:
-    description: 'Ref of alltrue-ai-gh-action-scripts to checkout (e.g., main)'
-    required: false
-    default: 'main'
 
 outputs:
   overall-status:
@@ -250,13 +246,9 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout alltrue-ai-gh-action-scripts repository
+    # Recommended: ensure the caller's repo is available in the workspace.
+    - name: Checkout caller repository
       uses: actions/checkout@v4
-      with:
-        repository: AllTrue-ai/alltrue-ai-gh-action-scripts
-        ref: ${{ inputs.source-ref }}
-        fetch-depth: 1
-        path: .llm-security-scanner
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -266,14 +258,13 @@ runs:
     - name: Install dependencies
       shell: bash
       run: |
-        cd .llm-security-scanner
-        pip install -r requirements.txt
+        python -m pip install --upgrade pip
+        python -m pip install -r requirements.txt
 
     - name: Run security scan script
       id: scan
       continue-on-error: true
       shell: bash
-      working-directory: .llm-security-scanner
       env:
         API_KEY: ${{ inputs.alltrue-api-key }}
         API_URL: ${{ inputs.alltrue-api-url }}
@@ -341,15 +332,6 @@ runs:
         POLL_TIMEOUT_ACTION: ${{ inputs.poll-timeout-action }}
         GRAPHQL_POLL_INTERVAL_SECS: ${{ inputs.graphql-poll-interval-secs }}
       run: python scripts/run_pentest.py
-
-    - name: Copy results to workspace
-      if: always()
-      shell: bash
-      run: |
-        cp .llm-security-scanner/pentest_results_*.csv . 2>/dev/null || true
-        cp .llm-security-scanner/model_scan_results_*.csv . 2>/dev/null || true
-        cp .llm-security-scanner/pentest_results_summary.json . 2>/dev/null || true
-        cp .llm-security-scanner/model_scan_results_summary.json . 2>/dev/null || true
 
     - name: Extract outcome for outputs
       id: extract-outcome
@@ -433,25 +415,21 @@ runs:
           local worst_idx
           worst_idx="$(idx "$worst")"
 
-          # If not failing on threshold breaches, neutral (caller can still decide)
           if [ "$THRESHOLD_ACTION" != "fail" ] && [ "$THRESHOLD_ACTION" != "both" ]; then
             echo "neutral"
             return
           fi
 
-          # If threshold disabled, neutral
           if [ "$threshold_idx" -eq 999 ]; then
             echo "neutral"
             return
           fi
 
-          # Unknown/no results => neutral
           if [ "$worst_idx" -eq 999 ]; then
             echo "neutral"
             return
           fi
 
-          # Fail if worst is >= threshold (lower index is worse)
           if [ "$worst_idx" -le "$threshold_idx" ]; then
             echo "failure"
           else
