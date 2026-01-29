@@ -118,8 +118,8 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
             print(f"[config-resolve] X Error resolving organization name '{config.ORGANIZATION_NAME}': {e}")
             # Check if it's a permission error
             if "403" in str(e) or "permission" in str(e).lower():
-                print(f"[config-resolve] [!]  Permission denied accessing organization lookup endpoint")
-                print(f"[config-resolve] [!]  Falling back to ORGANIZATION_ID if set, or will fail validation")
+                print("[config-resolve] [!]  Permission denied accessing organization lookup endpoint")
+                print("[config-resolve] [!]  Falling back to ORGANIZATION_ID if set, or will fail validation")
     elif config.ORGANIZATION_ID:
         resolved_org_id = config.ORGANIZATION_ID
         print(f"[config-resolve] Using ORGANIZATION_ID: {resolved_org_id}")
@@ -133,8 +133,8 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
         except Exception as e:
             print(f"[config-resolve] X Error resolving project names: {e}")
             if "403" in str(e) or "permission" in str(e).lower():
-                print(f"[config-resolve] [!]  Permission denied accessing project lookup endpoint")
-                print(f"[config-resolve] [!]  Falling back to PROJECT_IDS if set, or will fail validation")
+                print("[config-resolve] [!]  Permission denied accessing project lookup endpoint")
+                print("[config-resolve] [!]  Falling back to PROJECT_IDS if set, or will fail validation")
     
     # Add any direct PROJECT_IDS
     if config.PROJECT_IDS:
@@ -302,7 +302,7 @@ def validate_scope_requirements(
     
     else:
         print("=" * 80)
-        print(f"X CONFIGURATION ERROR: Invalid INVENTORY_SCOPE")
+        print("X CONFIGURATION ERROR: Invalid INVENTORY_SCOPE")
         print("=" * 80)
         print(f"INVENTORY_SCOPE is set to '{scope}' which is not a valid option.")
         print()
