@@ -44,12 +44,12 @@ def _search_issue_by_marker(marker: str) -> bool:
         url = f"{API_ROOT}/search/issues"
         r = requests.get(url, headers=_gh_headers(), params={"q": q, "per_page": 1}, timeout=20)
         if r.status_code != 200:
-            print(f"⚠️  GitHub search (open-only) failed ({r.status_code}): {r.text}")
+            print(f"[!]  GitHub search (open-only) failed ({r.status_code}): {r.text}")
             return False
         data = r.json() or {}
         return (data.get("total_count") or 0) > 0
     except Exception as e:
-        print(f"⚠️  GitHub search (open-only) error: {e}")
+        print(f"[!]  GitHub search (open-only) error: {e}")
         return False
 
 
@@ -60,12 +60,12 @@ def _format_result_line(r: dict) -> str:
     out = r.get("outcome") or "Unknown"
     jid = r.get("job_id") or "-"
     sid = r.get("scan_execution_id") or "-"
-    return f"- **{name}** (id: `{rid}`) — status: `{status}`, outcome: **{out}**, job: `{jid}`, exec: `{sid}`"
+    return f"- **{name}** (id: `{rid}`) - status: `{status}`, outcome: **{out}**, job: `{jid}`, exec: `{sid}`"
 
 
 def _make_title(prefix: str, severity: Optional[str], resource_name: str, *, tag: str = "[Pentest]") -> str:
     sev = severity.capitalize() if severity else "Unknown"
-    return f"{tag} {prefix}: {sev} — {resource_name}"
+    return f"{tag} {prefix}: {sev} - {resource_name}"
 
 
 def _category_severity_meets_min(sev: str) -> bool:
@@ -143,16 +143,16 @@ def _render_examples(examples: List[dict]) -> str:
         prompt = (d.get("externalPrompt") or d.get("prompt") or "").strip()
         reason = (d.get("failedReason") or d.get("reason") or "").strip()
         output = (d.get("output") or "").strip()
-        prompt_short = textwrap.shorten(prompt.replace("\n", " "), width=300, placeholder="…")
-        output_short = textwrap.shorten(output.replace("\n", " "), width=300, placeholder="…")
-        reason_short = textwrap.shorten(reason.replace("\n", " "), width=500, placeholder="…")
+        prompt_short = textwrap.shorten(prompt.replace("\n", " "), width=300, placeholder="...")
+        output_short = textwrap.shorten(output.replace("\n", " "), width=300, placeholder="...")
+        reason_short = textwrap.shorten(reason.replace("\n", " "), width=500, placeholder="...")
         lines.append(
             f"**Example {i}**\n"
             f"- Failed Reason: {reason_short}\n"
             f"- Prompt (trimmed): `{prompt_short}`\n"
             f"- Output (trimmed): `{output_short}`\n"
         )
-    extra = f"\n\n_…and {len(examples) - 5} more failed test case(s)_" if len(examples) > 5 else ""
+    extra = f"\n\n_...and {len(examples) - 5} more failed test case(s)_" if len(examples) > 5 else ""
     return (
         "<details>\n"
         f"<summary><strong>Failed Examples</strong> ({shown}{suffix})</summary>\n\n"
@@ -288,7 +288,7 @@ def _enrich_modelscan_with_v1_details(
     # Flatten vuln pairs nicely
     pairs = []
     for a, b in zip(vulns, (descs or [""] * len(vulns))):
-        pairs.append(f"{a}" + (f" — {b}" if b else ""))
+        pairs.append(f"{a}" + (f" - {b}" if b else ""))
 
     block = (
         "\n\n**Platform Issue (AllTrue)**\n"
@@ -309,7 +309,7 @@ def create_issues_for_threshold_breaches(breaches: List[dict], threshold: str, *
     if not breaches:
         return 0
     if not github_ready():
-        print("⚠️  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
+        print("[!]  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
         return 0
 
     created = 0
@@ -339,7 +339,7 @@ def create_issues_for_threshold_breaches(breaches: List[dict], threshold: str, *
 
         labels = _with_labels(config.GITHUB_DEFAULT_LABELS, [outcome_norm, source_label, "threshold-breach"])
         ok, msg = _post_issue(title, body, labels)
-        print(("📝 " if ok else "❌ ") + msg)
+        print(("[OK] " if ok else "[X] ") + msg)
         if ok:
             created += 1
     return created
@@ -351,7 +351,7 @@ def create_issues_for_hard_failures(failures: List[dict]) -> int:
     if not failures:
         return 0
     if not github_ready():
-        print("⚠️  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
+        print("[!]  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
         return 0
 
     created = 0
@@ -373,7 +373,7 @@ def create_issues_for_hard_failures(failures: List[dict]) -> int:
 
         labels = _with_labels(config.GITHUB_DEFAULT_LABELS, [outcome_norm, "hard-failure", "pentest"])
         ok, msg = _post_issue(title, body, labels)
-        print(("📝 " if ok else "❌ ") + msg)
+        print(("[OK] " if ok else "[X] ") + msg)
         if ok:
             created += 1
     return created
@@ -390,7 +390,7 @@ def create_failed_category_issues_for_results(results: List[dict]) -> int:
         print("[github] Per-category/per-policy issues disabled (CATEGORY_ISSUE_MIN_SEVERITY=NONE)")
         return 0
     if not github_ready():
-        print("⚠️  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
+        print("[!]  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
         return 0
     if not results:
         return 0
@@ -406,7 +406,7 @@ def create_failed_category_issues_for_results(results: List[dict]) -> int:
         try:
             data = api.query_pentest_execution_full(jwt, exec_id)
         except Exception as e:
-            print(f"❌ GraphQL fetch failed for exec {exec_id}: {e}")
+            print(f"[X] GraphQL fetch failed for exec {exec_id}: {e}")
             continue
 
         exec_info = data.get("llmPentestScanExecution") or {}
@@ -430,7 +430,7 @@ def create_failed_category_issues_for_results(results: List[dict]) -> int:
             failed = cat.get("failedTestCases")
             passed = cat.get("passedTestCases")
 
-            title = f"[Pentest][{severity}] {cat_name} — {res_name}"
+            title = f"[Pentest][{severity}] {cat_name} - {res_name}"
 
             # Evidence (examples)
             details = cat.get("failedTestCaseDetails") or []
@@ -446,10 +446,10 @@ def create_failed_category_issues_for_results(results: List[dict]) -> int:
             # Deduplication check (same as model scan)
             try:
                 if _search_issue_by_marker(marker):
-                    print(f"⏭️  Skipping duplicate for {res_name} / {cat_name} (open issue exists).")
+                    print(f"[SKIP]  Skipping duplicate for {res_name} / {cat_name} (open issue exists).")
                     continue
             except Exception as e:
-                print(f"⚠️  Dedupe check failed ({e}); attempting to create issue anyway.")
+                print(f"[!]  Dedupe check failed ({e}); attempting to create issue anyway.")
 
             header = _header_common(
                 resource_name=res_name,
@@ -475,7 +475,7 @@ def create_failed_category_issues_for_results(results: List[dict]) -> int:
                 [severity.lower(), "pentest", "pentest-category-failure", "unresolved", "platform-issue-linked"],
             )
             ok, msg = _post_issue(title, body, labels)
-            print(("📝 " if ok else "❌ ") + msg)
+            print(("[OK] " if ok else "[X] ") + msg)
             if ok:
                 created_total += 1
     return created_total
@@ -488,7 +488,7 @@ def create_issues_for_model_scan_violations(results: List[dict]) -> int:
         print("[github] Per-category/per-policy issues disabled (CATEGORY_ISSUE_MIN_SEVERITY=NONE)")
         return 0
     if not github_ready():
-        print("⚠️  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
+        print("[!]  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
         return 0
 
     created = 0
@@ -523,15 +523,15 @@ def create_issues_for_model_scan_violations(results: List[dict]) -> int:
             if severity_up and not _category_severity_meets_min(severity_up):
                 continue
 
-            title = f"[Model Scan][{policy}] {status} — {res_name}"
+            title = f"[Model Scan][{policy}] {status} - {res_name}"
             marker = f"<!-- model_scan resource:{res_id} policy:{policy} -->"
 
             try:
                 if _search_issue_by_marker(marker):
-                    print(f"⏭️  Skipping duplicate for {res_name} / {policy} (marker found).")
+                    print(f"[SKIP]  Skipping duplicate for {res_name} / {policy} (marker found).")
                     continue
             except Exception as e:
-                print(f"⚠️  Dedupe check failed ({e}); attempting to create issue anyway.")
+                print(f"[!]  Dedupe check failed ({e}); attempting to create issue anyway.")
 
             # Common-format header
             header_lines = [
@@ -560,7 +560,7 @@ def create_issues_for_model_scan_violations(results: List[dict]) -> int:
                     f"<summary><strong>Failed Examples</strong> ({examples_shown}{suffix})</summary>\n\n"
                     + "\n\n".join(detail_blocks)
                     + (
-                        f"\n\n_…and {examples_total - examples_shown} more failed test case(s)_" 
+                        f"\n\n_...and {examples_total - examples_shown} more failed test case(s)_" 
                         if examples_total > examples_shown else ""
                     )
                     + "\n</details>\n"
@@ -593,7 +593,7 @@ def create_issues_for_model_scan_violations(results: List[dict]) -> int:
             )
 
             ok, msg = _post_issue(title, body, labels)
-            print(("📝 " if ok else "❌ ") + msg)
+            print(("[OK] " if ok else "[X] ") + msg)
             if ok:
                 created += 1
     return created
@@ -608,7 +608,7 @@ def create_issues_for_model_scan_failures(failures: List[dict]) -> int:
     if not failures:
         return 0
     if not github_ready():
-        print("⚠️  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
+        print("[!]  GitHub issue creation skipped: GITHUB_TOKEN or GITHUB_REPOSITORY not set.")
         return 0
 
     created = 0
@@ -630,7 +630,7 @@ def create_issues_for_model_scan_failures(failures: List[dict]) -> int:
 
         labels = _with_labels(config.GITHUB_DEFAULT_LABELS, [outcome_norm, "hard-failure", "model-scan"])
         ok, msg = _post_issue(title, body, labels)
-        print(("📝 " if ok else "❌ ") + msg)
+        print(("[OK] " if ok else "[X] ") + msg)
         if ok:
             created += 1
     return created

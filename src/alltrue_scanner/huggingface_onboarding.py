@@ -56,17 +56,17 @@ def _verify_onboarded_resources(
                     rid = model.get("resource_instance_id")
                     if rid:
                         resource_ids.append(rid)
-                        print(f"[HF-Onboard] ✓ Verified: {req_display_name}")
+                        print(f"[HF-Onboard] OK Verified: {req_display_name}")
                         print(f"              Resource ID: {rid}")
                         break
         
         if not resource_ids:
-            print(f"[HF-Onboard] ⚠️  No matching resources found in inventory")
+            print(f"[HF-Onboard] [!]  No matching resources found in inventory")
         
         return resource_ids
         
     except Exception as e:
-        print(f"[HF-Onboard] ⚠️  Error verifying resources: {e}")
+        print(f"[HF-Onboard] [!]  Error verifying resources: {e}")
         return []
 
 
@@ -103,7 +103,7 @@ def onboard_huggingface_models(jwt: str, models: List[Dict[str, Any]], project_i
         display_name = model.get("display_name")
 
         if not org_id or not repo_name:
-            print(f"[HF-Onboard] ⚠️  Skipping model: missing organization_id or repo_name")
+            print(f"[HF-Onboard] [!]  Skipping model: missing organization_id or repo_name")
             continue
 
         # Auto-generate display name if not provided
@@ -177,10 +177,10 @@ def onboard_huggingface_models(jwt: str, models: List[Dict[str, Any]], project_i
             
             if res_id:
                 resource_ids.append(res_id)
-                print(f"[HF-Onboard] ✓ Onboarded: {res_name}")
+                print(f"[HF-Onboard] OK Onboarded: {res_name}")
                 print(f"              Resource ID: {res_id}")
             else:
-                print(f"[HF-Onboard] ⚠️  No resource_instance_id returned for: {res_identifier}")
+                print(f"[HF-Onboard] [!]  No resource_instance_id returned for: {res_identifier}")
 
         if resource_ids:
             print(f"\n[HF-Onboard] Successfully onboarded {len(resource_ids)} model(s)")
@@ -195,7 +195,7 @@ def onboard_huggingface_models(jwt: str, models: List[Dict[str, Any]], project_i
     except requests.HTTPError as e:
         # Handle 504 Gateway Timeout - resources may have been created despite timeout
         if e.response.status_code == 504:
-            print(f"[HF-Onboard] ⏱️  Gateway timeout (504) - resource creation may have succeeded")
+            print(f"[HF-Onboard] [TIMEOUT]  Gateway timeout (504) - resource creation may have succeeded")
             print(f"[HF-Onboard] Waiting 10s for backend to complete processing...")
             time.sleep(10)
             
@@ -203,7 +203,7 @@ def onboard_huggingface_models(jwt: str, models: List[Dict[str, Any]], project_i
             resource_ids = _verify_onboarded_resources(jwt, resources, project_id)
             
             if resource_ids:
-                print(f"\n[HF-Onboard] ✓ Successfully verified {len(resource_ids)} model(s) were created despite timeout")
+                print(f"\n[HF-Onboard] OK Successfully verified {len(resource_ids)} model(s) were created despite timeout")
                 
                 # Wait for indexing as we would normally
                 if config.HUGGINGFACE_ONBOARDING_WAIT_SECS > 0:
@@ -212,16 +212,16 @@ def onboard_huggingface_models(jwt: str, models: List[Dict[str, Any]], project_i
                 
                 return resource_ids
             else:
-                print(f"[HF-Onboard] ✗ Gateway timeout and resources not found in inventory")
+                print(f"[HF-Onboard] X Gateway timeout and resources not found in inventory")
                 print(f"[HF-Onboard]    This may indicate the backend failed to create the resources")
                 return []
         else:
             # Other HTTP errors - print and return empty
-            print(f"[HF-Onboard] ✗ Error onboarding models: {e}")
+            print(f"[HF-Onboard] X Error onboarding models: {e}")
             return []
             
     except Exception as e:
-        print(f"[HF-Onboard] ✗ Error onboarding models: {e}")
+        print(f"[HF-Onboard] X Error onboarding models: {e}")
         return []
 
 
@@ -277,6 +277,6 @@ def parse_huggingface_models_from_config() -> List[Dict[str, Any]]:
                 "revision": revision,
             })
         else:
-            print(f"[HF-Parse] ⚠️  Invalid model format: '{item}' (expected 'org/repo' or 'org/repo@revision')")
+            print(f"[HF-Parse] [!]  Invalid model format: '{item}' (expected 'org/repo' or 'org/repo@revision')")
 
     return models

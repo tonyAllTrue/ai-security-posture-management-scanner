@@ -14,7 +14,7 @@ from src.alltrue_scanner.utils import parse_csv_string
 def _mask(s: str, show: int = 4) -> str:
     if not s:
         return s
-    return s[:show] + "…" if len(s) > show else "…"
+    return s[:show] + "..." if len(s) > show else "..."
 
 
 def make_api_request(
@@ -211,9 +211,9 @@ def resolve_organization_names_or_ids(jwt_token: str, values: List[str]) -> List
         org_id = resolve_organization_name_to_id(jwt_token, value)
         if org_id:
             resolved_ids.append(org_id)
-            print(f"[org-resolve] Resolved organization name '{value}' → {org_id}")
+            print(f"[org-resolve] Resolved organization name '{value}' -> {org_id}")
         else:
-            print(f"[org-resolve] ⚠️  Could not resolve organization '{value}' (not found or invalid)")
+            print(f"[org-resolve] [!]  Could not resolve organization '{value}' (not found or invalid)")
 
     return resolved_ids
 
@@ -248,10 +248,10 @@ def resolve_project_names_or_ids(jwt_token: str, values: List[str], organization
         if project_id:
             resolved_ids.append(project_id)
             org_context = f" (within org {organization_id})" if organization_id else ""
-            print(f"[proj-resolve] Resolved project name '{value}'{org_context} → {project_id}")
+            print(f"[proj-resolve] Resolved project name '{value}'{org_context} -> {project_id}")
         else:
             org_context = f" within organization {organization_id}" if organization_id else ""
-            print(f"[proj-resolve] ⚠️  Could not resolve project '{value}'{org_context} (not found or invalid)")
+            print(f"[proj-resolve] [!]  Could not resolve project '{value}'{org_context} (not found or invalid)")
 
     return resolved_ids
 
@@ -975,7 +975,7 @@ query ModelScanSummaries($customerId: UUID!, $organizationId: UUID, $projectId: 
 
 def query_model_scan_details(jwt_token: str, model_scan_execution_id: str) -> dict:
     """
-    /v1/graphql: modelScanDetails – returns startAt, resource, issues, etc.
+    /v1/graphql: modelScanDetails - returns startAt, resource, issues, etc.
     """
     query = """
     query ModelScanDetails($customerId: UUID!, $scanId: UUID!) {
