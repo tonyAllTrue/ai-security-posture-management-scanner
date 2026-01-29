@@ -101,7 +101,7 @@ def _violations_from_gql_per_policy(per_policy: List[dict]) -> List[Dict[str, An
             if finding:
                 parts.append(finding)
             if vuln or desc:
-                parts.append("\n**Vulnerability:** " + " — ".join([p for p in [vuln, desc] if p]))
+                parts.append("\n**Vulnerability:** " + " -- ".join([p for p in [vuln, desc] if p]))
             if impact:
                 parts.append("\n**Impact:**\n" + impact)
             if remediation:
@@ -186,11 +186,11 @@ def run_model_scan_for_resource(
         poll_interval_secs=max(2.0, float(config.GRAPHQL_POLL_INTERVAL_SECS)),
         timeout_secs=float(config.POLL_TIMEOUT_SECS),
         min_started_at_iso=lower_bound_iso,
-        project_id=None,  # ← Search org-wide for reliable execution binding
+        project_id=None,  # <- Search org-wide for reliable execution binding
     )
     if msid:
         model_scan_execution_id = msid
-        print(f"[ModelScan]    {resource_name}: bound modelScanExecutionId via GraphQL → {msid}")
+        print(f"[ModelScan]    {resource_name}: bound modelScanExecutionId via GraphQL -> {msid}")
 
     if not model_scan_execution_id:
         return {
@@ -401,7 +401,7 @@ def run_model_scans(jwt: str, selected_ids: List[str], mapping: Dict[str, str]) 
 
             rn = mapping.get(rid, rid or "<unknown>")
             outcome = results_by_id[rid].get("status")
-            line = f"[ModelScan] {rn} → {outcome}"
+            line = f"[ModelScan] {rn} -> {outcome}"
             if results_by_id[rid].get("violations"):
                 pols = ", ".join(x.get("policy", "?") for x in results_by_id[rid]["violations"])
                 if outcome == "PASSED":

@@ -38,11 +38,11 @@ def _enhanced_name_match(display: str, needles: List[str], resource_data: dict) 
     - (none) Substring match (backward compatible, default behavior)
     
     Examples:
-    - repo:IHasFarms/MaliciousModel  → Only the ModelPackage, not individual files
-    - file:exploit.py                 → Only file-type resources with this name
-    - =Basic_model ML Model (...)     → Exact match only
-    - *.safetensors                   → All resources with .safetensors in name
-    - IHasFarms                       → Any resource containing "IHasFarms" (original behavior)
+    - repo:IHasFarms/MaliciousModel  -> Only the ModelPackage, not individual files
+    - file:exploit.py                 -> Only file-type resources with this name
+    - =Basic_model ML Model (...)     -> Exact match only
+    - *.safetensors                   -> All resources with .safetensors in name
+    - IHasFarms                       -> Any resource containing "IHasFarms" (original behavior)
     
     Args:
         display: Resource display name
@@ -111,15 +111,15 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
         try:
             resolved_org_id = api.resolve_organization_name_to_id(jwt, config.ORGANIZATION_NAME)
             if resolved_org_id:
-                print(f"[config-resolve] ✓ Resolved organization '{config.ORGANIZATION_NAME}' → {resolved_org_id}")
+                print(f"[config-resolve] OK Resolved organization '{config.ORGANIZATION_NAME}' -> {resolved_org_id}")
             else:
-                print(f"[config-resolve] ✗ Could not resolve organization name '{config.ORGANIZATION_NAME}'")
+                print(f"[config-resolve] X Could not resolve organization name '{config.ORGANIZATION_NAME}'")
         except Exception as e:
-            print(f"[config-resolve] ✗ Error resolving organization name '{config.ORGANIZATION_NAME}': {e}")
+            print(f"[config-resolve] X Error resolving organization name '{config.ORGANIZATION_NAME}': {e}")
             # Check if it's a permission error
             if "403" in str(e) or "permission" in str(e).lower():
-                print(f"[config-resolve] ⚠️  Permission denied accessing organization lookup endpoint")
-                print(f"[config-resolve] ⚠️  Falling back to ORGANIZATION_ID if set, or will fail validation")
+                print(f"[config-resolve] [!]  Permission denied accessing organization lookup endpoint")
+                print(f"[config-resolve] [!]  Falling back to ORGANIZATION_ID if set, or will fail validation")
     elif config.ORGANIZATION_ID:
         resolved_org_id = config.ORGANIZATION_ID
         print(f"[config-resolve] Using ORGANIZATION_ID: {resolved_org_id}")
@@ -131,10 +131,10 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
             resolved_from_names = api.resolve_project_names_or_ids(jwt, config.PROJECT_NAMES, resolved_org_id)
             resolved_project_ids.extend(resolved_from_names)
         except Exception as e:
-            print(f"[config-resolve] ✗ Error resolving project names: {e}")
+            print(f"[config-resolve] X Error resolving project names: {e}")
             if "403" in str(e) or "permission" in str(e).lower():
-                print(f"[config-resolve] ⚠️  Permission denied accessing project lookup endpoint")
-                print(f"[config-resolve] ⚠️  Falling back to PROJECT_IDS if set, or will fail validation")
+                print(f"[config-resolve] [!]  Permission denied accessing project lookup endpoint")
+                print(f"[config-resolve] [!]  Falling back to PROJECT_IDS if set, or will fail validation")
     
     # Add any direct PROJECT_IDS
     if config.PROJECT_IDS:
@@ -144,7 +144,7 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
             resolved_from_ids = api.resolve_project_names_or_ids(jwt, config.PROJECT_IDS, resolved_org_id)
             resolved_project_ids.extend(resolved_from_ids)
         except Exception as e:
-            print(f"[config-resolve] ⚠️  Error validating PROJECT_IDS: {e}")
+            print(f"[config-resolve] [!]  Error validating PROJECT_IDS: {e}")
             # If resolution fails, validate UUID format before adding
             import uuid as _uuid
             valid_ids = []
@@ -152,9 +152,9 @@ def resolve_config_org_and_projects(jwt: str) -> Tuple[Optional[str], List[str]]
                 try:
                     _uuid.UUID(pid)
                     valid_ids.append(pid)
-                    print(f"[config-resolve] ⚠️  Using PROJECT_ID as UUID (resolution failed): {pid}")
+                    print(f"[config-resolve] [!]  Using PROJECT_ID as UUID (resolution failed): {pid}")
                 except ValueError:
-                    print(f"[config-resolve] ✗ Invalid UUID format in PROJECT_IDS: {pid}")
+                    print(f"[config-resolve] X Invalid UUID format in PROJECT_IDS: {pid}")
             resolved_project_ids.extend(valid_ids)
     
     # Deduplicate project IDs
@@ -187,7 +187,7 @@ def validate_scope_requirements(
     if scope == "organization":
         if not resolved_org_id:
             print("=" * 80)
-            print("✖ CONFIGURATION ERROR: Missing Organization Identifier")
+            print("X CONFIGURATION ERROR: Missing Organization Identifier")
             print("=" * 80)
             print("INVENTORY_SCOPE is set to 'organization' but no organization identifier provided.")
             print()
@@ -207,12 +207,12 @@ def validate_scope_requirements(
             print("    alltrue-organization-id: '364fe49b-6ea1-4a53-83db-f8311a9c8412'")
             print("=" * 80)
             sys.exit(1)
-        print(f"[scope-validation] ✓ Organization scope validated: {resolved_org_id}")
+        print(f"[scope-validation] OK Organization scope validated: {resolved_org_id}")
     
     elif scope == "project":
         if not resolved_project_ids:
             print("=" * 80)
-            print("✖ CONFIGURATION ERROR: Missing Project Identifier(s)")
+            print("X CONFIGURATION ERROR: Missing Project Identifier(s)")
             print("=" * 80)
             print("INVENTORY_SCOPE is set to 'project' but no project identifiers provided.")
             print()
@@ -232,16 +232,16 @@ def validate_scope_requirements(
             print("    project-ids: '5c221ef3-86a5-49e0-bce9-df09b9a1d51a,7d332fg4-97b6-50f1-cde0-eg10c0b2e2m2'")
             print("=" * 80)
             sys.exit(1)
-        print(f"[scope-validation] ✓ Project scope validated: {len(resolved_project_ids)} project(s)")
+        print(f"[scope-validation] OK Project scope validated: {len(resolved_project_ids)} project(s)")
     
     elif scope == "resource":
         if not resolved_org_id and not resolved_project_ids:
             print("=" * 80)
-            print("✖ CONFIGURATION ERROR: Missing Scope Context for Resource Selection")
+            print("X CONFIGURATION ERROR: Missing Scope Context for Resource Selection")
             print("=" * 80)
             print("INVENTORY_SCOPE is set to 'resource' but no organization or project context provided.")
             print()
-            print("⚠️  SECURITY REQUIREMENT: Resource-scoped scanning requires access control context")
+            print("[!]  SECURITY REQUIREMENT: Resource-scoped scanning requires access control context")
             print("   to prevent unintended customer-wide scanning.")
             print()
             print("Required: Set AT LEAST ONE of the following:")
@@ -272,7 +272,7 @@ def validate_scope_requirements(
         
         if not has_resource_ids and not has_resource_names:
             print("=" * 80)
-            print("✖ CONFIGURATION ERROR: Missing Resource Identifiers")
+            print("X CONFIGURATION ERROR: Missing Resource Identifiers")
             print("=" * 80)
             print("INVENTORY_SCOPE is set to 'resource' but no resource identifiers provided.")
             print()
@@ -298,11 +298,11 @@ def validate_scope_requirements(
             context.append(f"organization {resolved_org_id}")
         if resolved_project_ids:
             context.append(f"{len(resolved_project_ids)} project(s)")
-        print(f"[scope-validation] ✓ Resource scope validated with context: {', '.join(context)}")
+        print(f"[scope-validation] OK Resource scope validated with context: {', '.join(context)}")
     
     else:
         print("=" * 80)
-        print(f"✖ CONFIGURATION ERROR: Invalid INVENTORY_SCOPE")
+        print(f"X CONFIGURATION ERROR: Invalid INVENTORY_SCOPE")
         print("=" * 80)
         print(f"INVENTORY_SCOPE is set to '{scope}' which is not a valid option.")
         print()
@@ -362,7 +362,7 @@ def select_with_scope(
     # ---------------- Fetch ----------------
     found: List[dict] = []
     if scope == "organization":
-        print(f"[inv] Fetching {entity_label} for organization scope…")
+        print(f"[inv] Fetching {entity_label} for organization scope...")
         kwargs = dict(jwt_token=jwt, organization_id=resolved_org_id, project_id=None)
         if pass_valid_only_to_api:
             kwargs["valid_only"] = config.HAS_VALID_PENTEST_CONNECTION_DETAILS
@@ -381,7 +381,7 @@ def select_with_scope(
         found = dedupe_fn(batch) if dedupe_fn else batch
 
     elif scope == "resource":
-        print(f"[inv] Fetching {entity_label} for resource scope (will filter by IDs/names)…")
+        print(f"[inv] Fetching {entity_label} for resource scope (will filter by IDs/names)...")
         # Resource scope still needs org/project context for API scoping
         # Fetch from all resolved projects (or org if no projects specified)
         batch: List[dict] = []
